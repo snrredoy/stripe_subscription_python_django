@@ -11,6 +11,7 @@ SUBSCRIPTION_TYPE = (
 class Package(models.Model):
     name = models.CharField(max_length=255, blank=True, null=True)
     price = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    description = models.TextField(blank=True, null=True)
     interval = models.CharField(max_length=10, choices=SUBSCRIPTION_TYPE, default='month')
 
     stripe_product_id = models.CharField(max_length=100, blank=True)
