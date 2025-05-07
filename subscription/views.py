@@ -21,9 +21,7 @@ def package_view(request):
 @csrf_exempt
 def subscription_create(request, package_id):
     user = request.user
-    print(user)
     package = Package.objects.get(id=package_id)
-    print(package)
 
     try:
         customers = stripe.Customer.list(email=user.email)
@@ -40,7 +38,6 @@ def subscription_create(request, package_id):
     
     try:
         current_subscription = Subscription.objects.filter(user=user, is_active=True).first()
-        print("current_subscription", current_subscription)
         stripe_subscription = None
 
         if current_subscription:
@@ -49,9 +46,8 @@ def subscription_create(request, package_id):
         current_subscription = None
 
     if stripe_subscription:
-        print(True)
         try:
-            update_subscription = stripe.Subscription.modify(
+            stripe.Subscription.modify(
                 stripe_subscription.id,
                 items=[{
                     'id': stripe_subscription['items']['data'][0].id,
@@ -59,6 +55,7 @@ def subscription_create(request, package_id):
                 }],
                 proration_behavior='create_prorations',
             )
+            update_subscription = stripe.Subscription.retrieve(stripe_subscription.id)
             current_subscription.is_active = False
             current_subscription.save()
 
@@ -66,9 +63,10 @@ def subscription_create(request, package_id):
                 user=user,
                 package = package,
                 stripe_subscription_id = update_subscription.id,
-                end_date = datetime.fromtimestamp(update_subscription['current_period_end']),
+                end_date = datetime.fromtimestamp(update_subscription['items']['data'][0]['current_period_end']),
                 is_active = True,
             )
+            return redirect('my-subscription')
         except stripe.error.StripeError:
             return redirect('package')
     else:
@@ -91,7 +89,7 @@ def subscription_create(request, package_id):
             }
         )
         return redirect(checkout_session.url)
-    return redirect('package')
+    
 
 
 @csrf_exempt
@@ -128,7 +126,7 @@ def stripe_webhook_view(request):
             is_active = True,
         )
     elif event['type'] == 'customer.subscription.updated':
-        data = eval['data']['object']
+        data = event['data']['object']
         metadata = data.get('metadata', {})
         user_id = metadata.get('user_id')
         package_id = metadata.get('package_id')
@@ -165,3 +163,11 @@ def success_view(request):
 
 def cancel_view(request):
     return render(request, 'subscription/cancel.html')
+
+def my_subscription(request):
+    user = request.user
+    subscription = Subscription.objects.filter(user=user, is_active=True)
+    context = {
+        'subscriptions': subscription
+    }
+    return render(request, 'subscription/my_subscription.html', context=context)

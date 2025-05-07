@@ -9,4 +9,5 @@ class PackageAdmin(admin.ModelAdmin):
 
 @admin.register(Subscription)
 class SubscriptionAdmin(admin.ModelAdmin):
-    pass
+    list_display = ('id', 'user', 'package', 'start_date', 'end_date', 'stripe_subscription_id', 'is_active')
+    list_display_links= ('id', 'user', 'package',)
